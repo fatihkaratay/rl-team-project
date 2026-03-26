@@ -10,7 +10,7 @@
 
 | Phase | What | Status |
 |-------|------|--------|
-| 1 | Project scaffold & environment | [ ] |
+| 1 | Project scaffold & environment | [x] |
 | 2 | MDP environment implementation | [ ] |
 | 3 | RL agents implementation | [ ] |
 | 4 | Model-based baseline (Value Iteration) | [ ] |

@@ -205,3 +205,15 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+
+.rl-team-project-env/
+.claude/
+
+# Experiment results (large pickle/npy files)
+results/*.pkl
+results/*.npy
+results/*.npz
+
+# Keep figures tracked
+!figures/
