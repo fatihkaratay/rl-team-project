@@ -13,8 +13,8 @@
 | 1 | Project scaffold & environment | [x] |
 | 2 | MDP environment implementation | [x] |
 | 3 | RL agents implementation | [x] |
-| 4 | Model-based baseline (Value Iteration) | [ ] |
-| 5 | Experiment runner & config system | [ ] |
+| 4 | Model-based baseline (Value Iteration) | [x] |
+| 5 | Experiment runner & config system | [x] |
 | 6 | Results collection & analysis | [ ] |
 | 7 | Visualization & plots | [ ] |
 | 8 | Paper writeup support | [ ] |
@@ -209,7 +209,7 @@ Single-agent finite-horizon MDP simulating adaptive brain stimulation. The agent
 
 ### Steps
 
-- [ ] 4.1 Define experiment config as a dataclass or dict:
+- [x] 4.1 Define experiment config as a dataclass or dict:
   ```python
   @dataclass
   class ExperimentConfig:
@@ -224,27 +224,27 @@ Single-agent finite-horizon MDP simulating adaptive brain stimulation. The agent
       n_seeds: int          # e.g. 10
   ```
 
-- [ ] 4.2 Define the **full factorial experiment matrix** in `configs.py`:
+- [x] 4.2 Define the **full factorial experiment matrix** in `configs.py`:
   - Settings: `['high', 'moderate', 'low']`
   - Horizons: `[5, 10]`
   - Switch costs: `[0, 0.1, 0.25]`
   - Algorithms: all 5
   - → 3 × 2 × 3 × 5 = **90 experiment configs** (before hyperparameter sensitivity)
 
-- [ ] 4.3 Implement `run_experiment(config) -> ExperimentResult`:
+- [x] 4.3 Implement `run_experiment(config) -> ExperimentResult`:
   - For each seed: create env + agent, train for `n_episodes`, collect episode returns + diagnostics
   - Return: mean/std of returns, Q-table, per-episode metrics
 
-- [ ] 4.4 Diagnostics to collect per episode:
+- [x] 4.4 Diagnostics to collect per episode:
   - `episode_return` — total reward
   - `site_visit_counts` — fraction of steps at each site
   - `patient_state_fractions` — fraction of time in each patient state
   - `switch_count` — number of site switches
   - `avg_consecutive_per_site` — mean consecutive stimulations before switching
 
-- [ ] 4.5 Save results as pickle or JSON in `results/` directory. Use config hash as filename.
+- [x] 4.5 Save results as pickle or JSON in `results/` directory. Use config hash as filename.
 
-- [ ] 4.6 Implement `run_all()` with `tqdm` progress bar; supports resume (skip configs already computed).
+- [x] 4.6 Implement `run_all()` with `tqdm` progress bar; supports resume (skip configs already computed).
 
 ---
 
