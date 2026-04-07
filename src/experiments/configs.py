@@ -12,9 +12,9 @@ from typing import List
 VALID_ALGORITHMS = ('mc', 'qlearning', 'expected_sarsa', 'double_q', 'value_iter')
 VALID_SETTINGS   = ('high', 'moderate', 'low')
 
-# n_episodes defaults by algorithm (from PLAN.md Key Design Decisions)
+# n_episodes defaults by algorithm
 _DEFAULT_N_EPISODES = {
-    'mc'            : 2000,
+    'mc'            : 5000,
     'value_iter'    : 200,   # evaluation rollouts post-solve
     'qlearning'     : 5000,
     'expected_sarsa': 5000,

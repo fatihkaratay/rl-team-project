@@ -49,25 +49,42 @@ def smooth(values, window=50):
     )
 
 
-def convergence_episode(mean_returns, threshold=0.05, window=50):
+def convergence_episode(mean_returns, window=200, k_std=2.0):
     """
-    First episode where the smoothed return stays within `threshold` fraction
-    of the final smoothed value for all remaining episodes.
+    First episode where the heavily-smoothed return enters and stays within
+    a noise-band of the final smoothed value.
+
+    The tolerance band is `k_std * tail_std`, where `tail_std` is the std of
+    the smoothed curve over the last 25 % of episodes — i.e. the steady-state
+    noise level. This makes the metric robust to per-episode variance and
+    actually distinguishes algorithms that stabilize at different times.
 
     Returns len(mean_returns) if convergence is never detected.
     """
     smoothed  = smooth(mean_returns, window=window)
     final_val = smoothed[-1]
-    if abs(final_val) < 1e-8:
-        # Near-zero baseline: use absolute threshold of 0.1
-        for i in range(len(smoothed)):
-            if np.all(np.abs(smoothed[i:] - final_val) <= 0.1):
-                return i
-        return len(mean_returns)
+    tail_n    = max(1, len(smoothed) // 4)
+    tail_std  = float(np.std(smoothed[-tail_n:]))
+    tol       = max(k_std * tail_std, 0.05)
     for i in range(len(smoothed)):
-        if np.all(np.abs(smoothed[i:] - final_val) <= threshold * abs(final_val)):
+        if np.all(np.abs(smoothed[i:] - final_val) <= tol):
             return i
     return len(mean_returns)
+
+
+def _bootstrap_ci(seed_means, n_boot=1000, ci=0.95, seed=0):
+    """
+    Bootstrap confidence interval for the mean of `seed_means`.
+    Returns (lo, hi).
+    """
+    rng = np.random.default_rng(seed)
+    arr = np.asarray(seed_means, dtype=float)
+    if arr.size == 0:
+        return (float('nan'), float('nan'))
+    samples = rng.choice(arr, size=(n_boot, arr.size), replace=True).mean(axis=1)
+    lo_p = (1 - ci) / 2 * 100
+    hi_p = (1 + ci) / 2 * 100
+    return float(np.percentile(samples, lo_p)), float(np.percentile(samples, hi_p))
 
 
 def _final_mean_return(result, frac=0.1):
@@ -93,19 +110,30 @@ def compute_summary(results) -> pd.DataFrame:
     Build a tidy summary DataFrame from all experiment results.
 
     Columns: algorithm, algo_label, setting, horizon, c_switch,
-             mean_return, std_return
+             mean_return, std_return, ci_low, ci_high, sem
     """
     rows = []
     for r in results:
-        c = r.config
+        c       = r.config
+        n_ep    = r.returns.shape[1]
+        cutoff  = max(1, int(n_ep * 0.9))
+        # Per-seed final-mean returns (one value per seed)
+        seed_means = r.returns[:, cutoff:].mean(axis=1)
+        mean_ret   = float(seed_means.mean())
+        std_ret    = float(seed_means.std())
+        sem        = std_ret / np.sqrt(max(1, len(seed_means)))
+        ci_lo, ci_hi = _bootstrap_ci(seed_means)
         rows.append({
             'algorithm' : c.algorithm,
             'algo_label': ALGO_LABELS[c.algorithm],
             'setting'   : c.setting,
             'horizon'   : c.horizon,
             'c_switch'  : c.c_switch,
-            'mean_return': _final_mean_return(r),
-            'std_return' : _final_std_return(r),
+            'mean_return': mean_ret,
+            'std_return' : std_ret,
+            'sem'        : sem,
+            'ci_low'     : ci_lo,
+            'ci_high'    : ci_hi,
         })
     return pd.DataFrame(rows)
 

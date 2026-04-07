@@ -203,8 +203,9 @@ def plot_performance_heatmap(results, horizon=10, c_switch=0.0, **kwargs):
 
 def plot_patient_state_distribution(results, horizon=10, c_switch=0.0, **kwargs):
     """
-    Stacked bar chart: fraction of time in each patient state (converged),
-    one bar group per algorithm × setting.
+    Three-panel grouped bar chart: one subplot per patient state (Baseline /
+    Receptive / Non-Receptive), x-axis = setting, bars = algorithms.
+    Uses converged behaviour (last 10 % of training episodes).
     """
     _setup_style()
     df  = H5_state_management(results)
@@ -212,58 +213,41 @@ def plot_patient_state_distribution(results, horizon=10, c_switch=0.0, **kwargs)
 
     settings   = ['high', 'moderate', 'low']
     algos      = MODEL_FREE_ALGOS + ['value_iter']
-    n_settings = len(settings)
-    n_algos    = len(algos)
-    width      = 0.7 / n_algos
-    x_base     = np.arange(n_settings)
+    ps_cols    = ['late_baseline', 'late_receptive', 'late_nonreceptive']
+    ps_titles  = ['Baseline', 'Receptive', 'Non-Receptive']
 
-    fig, ax = plt.subplots(figsize=(12, 5))
+    n_algos = len(algos)
+    width   = 0.7 / n_algos
+    x_base  = np.arange(len(settings))
 
-    for i, algo in enumerate(algos):
-        offset    = (i - n_algos / 2 + 0.5) * width
-        algo_data = sub[sub.algorithm == algo]
-        baseline_vals  = []
-        receptive_vals = []
-        nonrec_vals    = []
-        for s in settings:
-            row = algo_data[algo_data.setting == s]
-            if row.empty:
-                baseline_vals.append(0); receptive_vals.append(0); nonrec_vals.append(0)
-            else:
-                baseline_vals.append(float(row.late_baseline.values[0]))
-                receptive_vals.append(float(row.late_receptive.values[0]))
-                nonrec_vals.append(float(row.late_nonreceptive.values[0]))
-
-        positions = x_base + offset
-        color     = ALGO_COLORS[algo]
-        b1 = ax.bar(positions, baseline_vals,  width, label=None, color=color, alpha=0.4)
-        b2 = ax.bar(positions, receptive_vals, width, label=ALGO_LABELS[algo],
-                    bottom=baseline_vals, color=color, alpha=0.8)
-        b3 = ax.bar(positions, nonrec_vals,    width, label=None,
-                    bottom=np.array(baseline_vals) + np.array(receptive_vals),
-                    color=color, alpha=1.0, hatch='//')
-
-    ax.set_xticks(x_base)
-    ax.set_xticklabels([SETTING_TITLES[s] for s in settings])
-    ax.set_ylabel('Fraction of Episode Steps')
-    ax.set_ylim(0, 1.05)
-    ax.set_title(
-        f'Patient State Distribution (Converged)  |  horizon={horizon}, $c_{{switch}}$={c_switch}',
-        fontsize=12,
+    fig, axes = plt.subplots(1, 3, figsize=(14, 4.5), sharey=False)
+    fig.suptitle(
+        f'Patient State Distribution (Converged)  |  '
+        f'horizon={horizon}, $c_{{switch}}$={c_switch}',
+        fontsize=12, y=1.02,
     )
 
-    # Build legend for both algo and patient state patterns
-    algo_patches = [
-        plt.Rectangle((0, 0), 1, 1, fc=ALGO_COLORS[a], label=ALGO_LABELS[a])
-        for a in algos
-    ]
-    ps_patches = [
-        plt.Rectangle((0, 0), 1, 1, fc='grey', alpha=0.4, label='Baseline'),
-        plt.Rectangle((0, 0), 1, 1, fc='grey', alpha=0.8, label='Receptive'),
-        plt.Rectangle((0, 0), 1, 1, fc='grey', alpha=1.0, hatch='//', label='Non-Receptive'),
-    ]
-    ax.legend(handles=algo_patches + ps_patches, loc='upper right',
-              ncol=2, fontsize=8, frameon=True)
+    for ax, ps_col, ps_title in zip(axes, ps_cols, ps_titles):
+        for i, algo in enumerate(algos):
+            offset    = (i - n_algos / 2 + 0.5) * width
+            algo_data = sub[sub.algorithm == algo]
+            vals = []
+            for s in settings:
+                row = algo_data[algo_data.setting == s]
+                vals.append(float(row[ps_col].values[0]) if not row.empty else 0.0)
+            ax.bar(x_base + offset, vals, width,
+                   color=ALGO_COLORS[algo], label=ALGO_LABELS[algo], alpha=0.85)
+
+        ax.set_title(ps_title, fontsize=11)
+        ax.set_xticks(x_base)
+        ax.set_xticklabels([SETTING_TITLES[s] for s in settings], rotation=12, ha='right')
+        ax.set_ylabel('Fraction of Episode Steps' if ps_title == 'Baseline' else '')
+        ax.set_ylim(0, 0.75)
+
+    # Single shared legend below all panels
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc='lower center', ncol=n_algos,
+               bbox_to_anchor=(0.5, -0.08), frameon=True, fontsize=9)
 
     fig.tight_layout()
     _save(fig, f'fig3_patient_state_dist_h{horizon}_c{c_switch}')
@@ -549,11 +533,13 @@ def plot_all(results, **kwargs):
                                          c_switch=c_switch, **kwargs))
     figs.append(plot_patient_state_distribution(results, horizon=horizon,
                                                 c_switch=c_switch, **kwargs))
-    figs.append(plot_site_visit_frequency(results, setting=setting,
-                                          horizon=horizon, c_switch=c_switch,
-                                          **kwargs))
-    figs.append(plot_switching_vs_cost(results, setting=setting,
-                                       horizon=horizon, **kwargs))
+    # Fig 4 & Fig 5: one per separation setting
+    for s in ('high', 'moderate', 'low'):
+        figs.append(plot_site_visit_frequency(results, setting=s,
+                                              horizon=horizon, c_switch=c_switch,
+                                              **kwargs))
+        figs.append(plot_switching_vs_cost(results, setting=s,
+                                           horizon=horizon, **kwargs))
     figs.append(plot_q_value_heatmap(results, setting=setting,
                                      horizon=horizon, c_switch=c_switch,
                                      **kwargs))
